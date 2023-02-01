@@ -1,6 +1,6 @@
 # Out-of-Distribution Detection using One-vs-All Classifiers
 
-This is the source code for the Bachelor Thesis Out-of-Distribution Detection using One-vs-All Classifiers by Daniel Korth (Advisor: Alessandro Wollek, Supervisor: PD Dr. Tobias Lasser).
+This is the repository for my Bachelor Thesis "Out-of-Distribution Detection using One-vs-All Classifiers" advised by Alessandro Wollek and supervised by PD Dr. Tobias Lasser.
 
 ### Preliminaries
 ##### 1. Packages
