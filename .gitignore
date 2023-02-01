@@ -1,0 +1,13 @@
+env3.8/
+lightning_logs/
+install-poetry.py
+poetry.lock
+__pycache__
+model_checkpoints_2d/
+datasets/
+.ipynb_checkpoints/
+.env/
+notebooks/
+run_ids.json
+presentation/
+images/

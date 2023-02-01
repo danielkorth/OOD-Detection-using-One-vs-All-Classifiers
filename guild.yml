@@ -1,0 +1,496 @@
+####################
+### SHARED STUFF ###
+####################
+
+# default seed:
+- config: default-seed
+  flags: 
+    seed: 42
+
+# default model checkpoint options
+- config: default-checkpoint
+  flags:
+    sched_monitor: 'val_loss'
+    sched_mode: 'min'
+
+- config: default-ovaf-distribution
+  flags: 
+    pct_negative_in_distribution: 0.25
+    pct_negative_synthesized_outliers: 0.75
+    pct_negative_real_outliers: 0.0
+    sample_from: 1000
+
+- config: default-ovaf-with-ood-distribution
+  flags: 
+    pct_negative_in_distribution: 0.5
+    pct_negative_synthesized_outliers: 0.0
+    pct_negative_real_outliers: 0.5
+    sample_from: 1000
+
+- config: default-ovaf-training
+  flags:
+    batch_size: 256
+    learning_rate: 1e-3
+    optim: 'torch.optim.Adam'
+    scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
+    eta_min: 1e-6
+    t_max: 10
+    max_epochs: 10
+    dropout: 0.3
+
+###########
+### MLP ###
+########### 
+
+- config: default-training-mlp
+  flags:
+    batch_size: 256
+    learning_rate: 1e-3
+    optim: 'torch.optim.Adam'
+    scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
+    eta_min: 1e-6
+    t_max: 10
+    max_epochs: 10
+
+
+- model: MLP
+  operations:
+    train: 
+      main: train
+      description: Train MLP on MNIST
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'mlp'
+        data: 'MNIST'
+        $include: [default-seed, default-checkpoint, default-training-mlp]
+      
+
+    train_ova:
+      main: train_mlp_ova
+      description: Train MLP on MNIST one-vs-all 
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        data: 'MNIST'
+        weighted_ce: False # whether to use weigthed cross_entropy or not
+        $include: [default-seed, default-checkpoint, default-training-mlp]
+
+
+    train_energy:
+      main: train_energy
+      description: Fine-tune Energies for MLP using FashionMNIST as OOD dataset
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'mlp'
+        backbone_id: 'f496dd00747f40bea45c7a1fd0034633' # insert your pretrained MLP run ID here
+        num_classes: 10
+        in_data: 'MNIST'
+        ood_data: 'FashionMNIST'
+        batch_size: 256
+        learning_rate: 1e-4
+        optim: 'torch.optim.Adam'
+        scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
+        eta_min: 1e-6
+        t_max: 5
+        max_epochs: 5
+        m_in: -25.
+        m_out: -7.
+        $include: [default-seed]
+
+    
+    train_vos:
+      main: train_vos
+      description: Train MLP on MNIST using VOS approach
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'mlp'
+        data: 'MNIST'
+        num_classes: 10
+        start_epoch: 4
+        sample_number: 1000
+        sample_from: 10000
+        num_select: 1
+        $include: [default-seed, default-training-mlp, default-checkpoint]
+
+    train_ovaf:
+      main: train_heads
+      description: Train OVAF with synthetic outliers
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'mlp'
+        in_data: 'MNIST'
+        ood_data: 'FashionMNIST'
+        feature_size: '[64, 32]'
+        backbone_id: 'f496dd00747f40bea45c7a1fd0034633'
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-ovaf-distribution, default-ovaf-training]
+
+    train_ovaf_with_ood:
+      main: train_heads
+      description: Train OVAF with FashionMNIST as real outliers
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'mlp'
+        in_data: 'MNIST'
+        ood_data: 'FashionMNIST'
+        feature_size: '[64, 32]'
+        backbone_id: 'f496dd00747f40bea45c7a1fd0034633'
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-ovaf-with-ood-distribution, default-ovaf-training]
+
+
+# only difference is the batch size since densenet is way larger
+- config: default-training-densenet-wideresnet
+  flags:
+    learning_rate: 0.1
+    optim: "torch.optim.SGD"
+    weight_decay: 5e-4
+    momentum: 0.9
+    nesterov: True
+    scheduler: "torch.optim.lr_scheduler.CosineAnnealingLR"
+    t_max: 100
+    max_epochs: 100
+    eta_min: 1e-6
+
+- config: default-energy-finetune-densenet-wideresnet
+  flags: 
+    learning_rate: 0.001
+    optim: 'torch.optim.SGD'
+    weight_decay: 5e-4
+    momentum: 0.9
+    scheduler: "torch.optim.lr_scheduler.CosineAnnealingLR"
+    t_max: 10
+    max_epochs: 10
+    eta_min: 1e-6
+    m_in: -27.
+    m_out: -5.
+
+- config: default-vos-training-densenet-wideresnet
+  flags: 
+    start_epoch: 40
+    sample_number: 1000
+    sample_from: 10000
+    num_select: 1
+    $include: default-training-densenet-wideresnet
+
+
+################
+### DenseNet ###
+################
+
+- model: DenseNet
+  operations: 
+
+    train_cifar10: 
+      main: train
+      description: Train DenseNet on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        data: 'CIFAR10'
+        num_classes: 10
+        batch_size: 64
+        $include: [default-seed, default-checkpoint, default-training-densenet-wideresnet]
+
+    
+    train_cifar100: 
+      main: train
+      description: Train DenseNet on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        data: 'CIFAR100'
+        num_classes: 100
+        batch_size: 64
+        $include: [default-seed, default-checkpoint, default-training-densenet-wideresnet]
+
+
+    train_energy_cifar10:
+      main: train_energy
+      description: Fine-tune Energies for DenseNet using CIFAR100 as OOD dataset
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        backbone_id: 'fb27cd517c25418194c87686d101c673'
+        num_classes: 10
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        batch_size: 64
+        $include: [default-seed, default-energy-finetune-densenet-wideresnet]
+
+
+    train_energy_cifar100:
+      main: train_energy
+      description: Fine-tune Energies for DenseNet using CIFAR10 as OOD dataset
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        backbone_id: 'f44f76509fb04537a6f0f93098afc307'
+        num_classes: 100
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        batch_size: 64
+        $include: [default-seed, default-energy-finetune-densenet-wideresnet]
+
+
+    train_vos_cifar10:
+      main: train_vos
+      description: Train DenseNet on CIFAR10 using VOS approach
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        data: 'CIFAR10'
+        batch_size: 64
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-vos-training-densenet-wideresnet]
+      
+
+    train_vos_cifar100:
+      main: train_vos
+      description: Train DenseNet on CIFAR100 using VOS approach
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'densenet'
+        data: 'CIFAR100'
+        batch_size: 32
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-vos-training-densenet-wideresnet]
+
+    train_ovaf_cifar10:
+      main: train_heads
+      description: Train OVAF with synthetic outliers on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'densenet'
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        feature_size: '[128, 64]'
+        backbone_id: 'fb27cd517c25418194c87686d101c673'
+        num_classes: 10
+        batch_size: 64
+        $include: [default-seed, default-checkpoint, default-ovaf-distribution, default-ovaf-training]
+
+    train_ovaf_with_ood_cifar10:
+      main: train_heads
+      description: Train OVAF with real outliers on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'densenet'
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        feature_size: '[128, 64]'
+        backbone_id: 'fb27cd517c25418194c87686d101c673'
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-ovaf-with-ood-distribution, default-ovaf-training]
+
+    train_ovaf_cifar100:
+      main: train_heads
+      description: Train OVAF with synthetic outliers on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'densenet'
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        feature_size: '[128, 64]'
+        backbone_id: 'f44f76509fb04537a6f0f93098afc307'
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-ovaf-distribution, default-ovaf-training]
+
+    train_ovaf_with_ood_cifar100:
+      main: train_heads
+      description: Train OVAF with real outliers on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'densenet'
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        feature_size: '[128, 64]'
+        backbone_id: 'f44f76509fb04537a6f0f93098afc307'
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-ovaf-with-ood-distribution, default-ovaf-training]
+      
+# ######################
+# ##### WideResNet #####
+# ######################
+
+- model: WideResNet
+  operations:
+
+    train_cifar10:
+      main: train
+      description: Train WideResNet on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        data: 'CIFAR10'
+        num_classes: 10
+        batch_size: 128
+        $include: [default-seed, default-checkpoint, default-training-densenet-wideresnet]
+
+
+    train_cifar100:
+      main: train
+      description: Train WideResNet on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        data: 'CIFAR100'
+        num_classes: 100
+        batch_size: 128
+        $include: [default-seed, default-checkpoint, default-training-densenet-wideresnet]
+
+      
+    train_energy_cifar10:
+      main: train_energy
+      description: Fine-tune Energies for WideResNet using CIFAR100 as OOD dataset
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        backbone_id: 'f463c63afd064ebd987aa10bcddc6fe5'
+        num_classes: 10
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        batch_size: 128
+        $include: [default-seed, default-energy-finetune-densenet-wideresnet]
+    
+
+    train_energy_cifar100:
+      main: train_energy
+      description: Fine-tune Energies for WideResNet using CIFAR10 as OOD dataset
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        backbone_id: 'a92c7cee2d0e49d3996b94e6df9e5fe9'
+        num_classes: 100
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        batch_size: 128
+        $include: [default-seed, default-energy-finetune-densenet-wideresnet]
+
+
+    train_vos_cifar10:
+      main: train_vos
+      description: Train WideResNet on CIFAR10 using VOS approach
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        data: 'CIFAR10'
+        batch_size: 128
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-vos-training-densenet-wideresnet]
+    
+    train_vos_cifar100:
+      main: train_vos
+      description: Train WideResNet on CIFAR100 using VOS approach
+      sourcecode: 
+        - exclude: 
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags:
+        model: 'wideresnet'
+        data: 'CIFAR100'
+        batch_size: 128
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-vos-training-densenet-wideresnet]
+
+
+    train_ovaf_cifar10:
+      main: train_heads
+      description: Train OVAF with synthetic outliers on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'wideresnet'
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        feature_size: '[128, 64]'
+        backbone_id: 'f463c63afd064ebd987aa10bcddc6fe5'
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-ovaf-distribution, default-ovaf-training]
+
+
+    train_ovaf_with_ood_cifar10:
+      main: train_heads
+      description: Train OVAF with real outliers on CIFAR10
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'wideresnet'
+        in_data: 'CIFAR10'
+        ood_data: 'CIFAR100'
+        feature_size: '[128, 64]'
+        backbone_id: 'f463c63afd064ebd987aa10bcddc6fe5'
+        num_classes: 10
+        $include: [default-seed, default-checkpoint, default-ovaf-with-ood-distribution, default-ovaf-training]
+
+    train_ovaf_cifar100:
+      main: train_heads
+      description: Train OVAF with synthetic outliers on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'wideresnet'
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        feature_size: '[128, 64]'
+        backbone_id: 'a92c7cee2d0e49d3996b94e6df9e5fe9'
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-ovaf-distribution, default-ovaf-training]
+
+    train_ovaf_with_ood_cifar100:
+      main: train_heads
+      description: Train OVAF with real outliers on CIFAR100
+      sourcecode: 
+        - exclude:
+            dir: [datasets, notebooks, lightning_logs, .ipynb_checkpoints, images]
+      flags: 
+        model: 'wideresnet'
+        in_data: 'CIFAR100'
+        ood_data: 'CIFAR10'
+        feature_size: '[128, 64]'
+        backbone_id: 'a92c7cee2d0e49d3996b94e6df9e5fe9'
+        num_classes: 100
+        $include: [default-seed, default-checkpoint, default-ovaf-with-ood-distribution, default-ovaf-training]
